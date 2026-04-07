@@ -167,12 +167,15 @@ window.loadMyImages = async function(user) {
   }
 };
 const user = localStorage.getItem("name");
-
 const welcomeEl = document.getElementById("welcome");
 
-if (!user) {
+const isIndex = window.location.pathname.includes("index.html");
+
+if (!user && !isIndex) {
   window.location.href = "index.html";
-} else if (welcomeEl) {
+}
+
+if (user && welcomeEl) {
   welcomeEl.innerText = "Pozdrav, " + user;
   loadMyImages(user);
 }
