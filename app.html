@@ -8,6 +8,11 @@
     <title>PhotoDump</title>
     <link rel="stylesheet" href="style.css">
    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+   <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e91e63">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
 </head>
 <body>
 <div class="hearts">
@@ -40,7 +45,41 @@
     <h3>Moje slike</h3>
     <div id="gallery"></div>
 </div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
+    authDomain: "photodump-ml.firebaseapp.com",
+    projectId: "photodump-ml",
+    storageBucket: "photodump-ml.firebasestorage.app",
+    messagingSenderId: "33564506308",
+    appId: "1:33564506308:web:83f8a2127d3dc18e51b191"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const storage = getStorage(app);
+  const db = getFirestore(app);
+
+  // GLOBALNA FUNKCIJA
+  window.uploadToFirebase = async function(file, user) {
+    const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
+
+    await uploadBytes(storageRef, file);
+
+    const url = await getDownloadURL(storageRef);
+
+    await addDoc(collection(db, "photos"), {
+      user: user,
+      imageUrl: url,
+      created: new Date()
+    });
+
+    return url;
+  }
+</script>
 <script src="script.js"></script>
 <div id="toast"></div>
 </body>

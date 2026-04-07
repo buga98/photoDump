@@ -22,14 +22,19 @@ if (window.location.pathname.includes("app.html")) {
     }
 }
 
-// FAKE UPLOAD
-function uploadFile(files) {
+async function uploadFile(files) {
+    const user = localStorage.getItem("user");
+
     for (let file of files) {
+        const url = await window.uploadToFirebase(file, user);
+
         const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
+        img.src = url;
 
         document.getElementById("gallery").appendChild(img);
     }
+
+    showToast("Uploadano 🎉");
 }
 function showToast(message) {
     const toast = document.getElementById("toast");
@@ -39,15 +44,4 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.remove("show");
     }, 2000);
-}
-
-function uploadFile(files) {
-    for (let file of files) {
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-
-        document.getElementById("gallery").appendChild(img);
-    }
-
-    showToast("Dodano 🎉");
 }
