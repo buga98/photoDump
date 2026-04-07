@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, doc, setDoc, addDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+import { getFirestore, doc, setDoc, addDoc, collection,getDoc, getDocs, query, where,deleteDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
@@ -31,6 +32,98 @@ window.enterApp = function() {
 
     window.location.href = "app.html";
 };
+let selectedPhotoId = null;
+
+window.confirmDelete = async function() {
+  document.getElementById("deleteModal").style.display = "none";
+
+  const docRef = doc(db, "photos", selectedPhotoId);
+  const snap = await getDocs(query(collection(db, "photos")));
+
+  let imageUrl = null;
+
+  snap.forEach(d => {
+    if (d.id === selectedPhotoId) {
+      imageUrl = d.data().imageUrl;
+    }
+  });
+
+  // 🔥 DELETE FROM STORAGE
+  if (imageUrl) {
+    try {
+      const storage = getStorage();
+      const imageRef = ref(storage, imageUrl);
+      await deleteObject(imageRef);
+    } catch (e) {
+      console.log("Storage delete fail:", e);
+    }
+  }
+
+  // 🔥 DELETE FROM FIRESTORE
+  await deleteDoc(docRef);
+
+  loadMyImages(); // refresh
+};
+
+window.closeDelete = function() {
+  document.getElementById("deleteModal").style.display = "none";
+};
+function openFullscreen(url) {
+  const full = document.createElement("div");
+
+  full.style.position = "fixed";
+  full.style.top = 0;
+  full.style.left = 0;
+  full.style.width = "100%";
+  full.style.height = "100%";
+  full.style.background = "rgba(0,0,0,0.9)";
+  full.style.display = "flex";
+  full.style.alignItems = "center";
+  full.style.justifyContent = "center";
+  full.style.zIndex = 999;
+
+  const img = document.createElement("img");
+  img.src = url;
+  img.style.maxWidth = "90%";
+  img.style.maxHeight = "90%";
+
+  full.appendChild(img);
+  full.onclick = () => full.remove();
+
+  document.body.appendChild(full);
+}
+
+window.openGallery = async function() {
+  document.getElementById("galleryModal").style.display = "flex";
+
+  const gallery = document.getElementById("publicGallery");
+  gallery.innerHTML = "Učitavanje...";
+
+  const snapshot = await getDocs(collection(db, "photos"));
+
+  gallery.innerHTML = "";
+
+  snapshot.forEach(doc => {
+    const data = doc.data();
+
+    // 🔥 FILTER
+    if (data.visible === false) return;
+    if (data.type === "video") return;
+
+    const img = document.createElement("img");
+    img.src = data.imageUrl;
+
+    // fullscreen
+    img.onclick = () => openFullscreen(data.imageUrl);
+
+    gallery.appendChild(img);
+  });
+};
+
+window.closeGallery = function() {
+  document.getElementById("galleryModal").style.display = "none";
+};
+
 window.uploadToFirebase = function(file, user, onProgress) {
   return new Promise((resolve, reject) => {
     const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
@@ -50,6 +143,7 @@ window.uploadToFirebase = function(file, user, onProgress) {
         await addDoc(collection(db, "photos"), {
           imageUrl: url,
           user: user, // 🔥 VAŽNO!
+          userId: localStorage.getItem("userId"), 
           created: new Date()
         });
 
@@ -59,6 +153,33 @@ window.uploadToFirebase = function(file, user, onProgress) {
   });
 };
 
+let clickCount = 0;
+
+window.secretAdminClick = function() {
+  clickCount++;
+
+  if (clickCount === 3) {
+    openAdminModal();
+    clickCount = 0;
+  }
+
+  setTimeout(() => {
+    clickCount = 0;
+  }, 1000);
+};
+window.closeAdminModal = function() {
+  document.getElementById("adminModal").style.display = "none";
+};
+
+window.openAdminModal = function() {
+  document.getElementById("adminModal").style.display = "flex";
+};
+window.onclick = function(e) {
+  const modal = document.getElementById("adminModal");
+  if (e.target === modal) {
+    modal.style.display = "none";
+  }
+};
 window.showTab = function(tab) {
   document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
@@ -105,66 +226,61 @@ window.closeSuccessModal = function() {
   document.getElementById("successModal").style.display = "none";
 };
 
-window.loadMyImages = async function(user) {
-  const gallery = document.getElementById("gallery");
-  gallery.innerHTML = "Učitavanje...";
+window.loadMyImages = async function() {
+    const userId = localStorage.getItem("userId");
+    const gallery = document.getElementById("gallery");
+    const name = localStorage.getItem("name");
+    
+    if (!gallery) return; // Sigurnosna provjera
+    
+    gallery.innerHTML = "<p>Učitavam tvoje slike...</p>";
 
-  try {
-    const q = query(
-      collection(db, "photos"),
-      where("user", "==", user)
-    );
+    try {
+        const q = query(
+            collection(db, "photos"),
+            where("user", "==", name)
+        );
 
-    const querySnapshot = await getDocs(q);
+        const snapshot = await getDocs(q);
+        gallery.innerHTML = ""; // Očisti loader
 
-    gallery.innerHTML = "";
+        if (snapshot.empty) {
+            gallery.innerHTML = "<p style='grid-column: 1/-1; opacity: 0.6;'>Još nisi dodao nijednu sliku 📸</p>";
+            return;
+        }
 
-    if (querySnapshot.empty) {
-      gallery.innerHTML = "<p style='opacity:0.6'>Nema još slika 📸</p>";
-      return;
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const wrapper = document.createElement("div");
+            wrapper.className = "my-photo-item";
+
+            const img = document.createElement("img");
+            img.src = data.imageUrl;
+            img.onclick = () => openFullscreen(data.imageUrl);
+
+            wrapper.appendChild(img);
+
+            // Long press za brisanje
+            let pressTimer;
+            const startPress = () => {
+                pressTimer = setTimeout(() => {
+                    selectedPhotoId = docSnap.id;
+                    document.getElementById("deleteModal").style.display = "flex";
+                }, 700);
+            };
+            const cancelPress = () => clearTimeout(pressTimer);
+
+            wrapper.onmousedown = startPress;
+            wrapper.ontouchstart = startPress;
+            wrapper.onmouseup = cancelPress;
+            wrapper.ontouchend = cancelPress;
+
+            gallery.appendChild(wrapper);
+        });
+    } catch (error) {
+        console.error("Greška pri učitavanju:", error);
+        gallery.innerHTML = "Greška pri učitavanju slika.";
     }
-
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-
-      const img = document.createElement("img");
-      img.src = data.imageUrl;
-      img.className = "gallery-img";
-
-      // 🔥 klik za fullscreen
-      img.onclick = () => {
-        const full = document.createElement("div");
-        full.style.position = "fixed";
-        full.style.top = 0;
-        full.style.left = 0;
-        full.style.width = "100%";
-        full.style.height = "100%";
-        full.style.background = "rgba(0,0,0,0.9)";
-        full.style.display = "flex";
-        full.style.alignItems = "center";
-        full.style.justifyContent = "center";
-        full.style.zIndex = 999;
-
-        const bigImg = document.createElement("img");
-        bigImg.src = data.imageUrl;
-        bigImg.style.maxWidth = "90%";
-        bigImg.style.maxHeight = "90%";
-        bigImg.style.borderRadius = "10px";
-
-        full.appendChild(bigImg);
-
-        full.onclick = () => full.remove();
-
-        document.body.appendChild(full);
-      };
-
-      gallery.appendChild(img);
-    });
-
-  } catch (err) {
-    console.error(err);
-    gallery.innerHTML = "<p style='color:red'>Greška kod učitavanja 😢</p>";
-  }
 };
 const user = localStorage.getItem("name");
 const welcomeEl = document.getElementById("welcome");
@@ -238,19 +354,6 @@ function showToast(message) {
         toast.classList.remove("show");
     }, 2000);
 }
-window.openAdminModal = function() {
-  const modal = document.getElementById("adminModal");
-  if (modal) {
-    modal.style.display = "flex";
-  }
-};
 
-function checkAdmin() {
-    const pass = document.getElementById("adminPass").value;
 
-    if (pass === "admin") {
-        window.location.href = "admin.html";
-    } else {
-        alert("Kriva šifra");
-    }
-}
+

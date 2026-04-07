@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - PhotoDump</title>
-
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="topbar">
-    💍 Admin pregled
-</div>
+<div class="topbar">💍 Admin pregled</div>
 
 <div class="container">
 
@@ -20,9 +18,13 @@
         <button class="tab active" onclick="showAdminTab('photos')">📸 Slike</button>
         <button class="tab" onclick="showAdminTab('dedications')">💌 Posvete</button>
     </div>
-<button class="btn-primary" onclick="startSlideshow()">
-  ▶️ Pokreni slideshow
-</button>
+
+    <!-- ACTIONS -->
+    <div class="admin-actions">
+
+        <button class="slideshow-btn" onclick="startSlideshow()">▶️ Slideshow</button>
+        <button class="slideshow-btn" onclick="openSettings()">⚙️</button>
+    </div>
     <!-- SLIKE -->
     <div id="adminPhotos" class="tab-content active">
         <div id="gallery"></div>
@@ -32,19 +34,90 @@
     <div id="adminDedications" class="tab-content">
         <div id="dedicationsList"></div>
     </div>
-<div id="dedicationModal" class="modal">
-  <div class="modal-box">
-    <p id="dedicationFullText"></p>
-    <div id="dedicationAuthor"></div>
-    <button onclick="closeDedicationModal()">Zatvori</button>
+
+    <!-- MODAL -->
+    <div id="dedicationModal" class="modal">
+        <div class="modal-box">
+            <p id="dedicationFullText"></p>
+            <div id="dedicationAuthor"></div>
+            <button onclick="closeDedicationModal()">Zatvori</button>
+        </div>
+    </div>
+<div id="photoActionModal" class="modal">
+  <div class="modal-box action-box">
+
+    <h3 id="photoActionTitle"></h3>
+
+    <div class="action-buttons">
+      <button class="btn-yes" onclick="confirmPhotoAction(true)">Da</button>
+      <button class="btn-no" onclick="confirmPhotoAction(false)">Ne</button>
+    </div>
+
   </div>
 </div>
+
+<div id="settingsModal" class="modal">
+  <div class="modal-box settings-box">
+
+    <!-- HEADER -->
+    <div class="modal-header">
+      <h3>⚙️ Postavke</h3>
+      <span class="close-btn" onclick="closeSettings()">✖</span>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="settings-group">
+      <label>Trajanje slajda</label>
+
+      <select id="slideSpeed" class="input-modern">
+        <option value="2000">2 sekunde</option>
+        <option value="3000">3 sekunde</option>
+        <option value="5000">5 sekundi</option>
+        <option value="10000">10 sekundi</option>
+      </select>
+    </div>
+
+    <div class="settings-group checkbox-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="showAuthor" checked>
+        <span class="custom-check"></span>
+        Prikaži ime autora
+      </label>
+    </div>
+<!-- DOWNLOAD -->
+<div class="settings-group">
+  <button class="btn-secondary" onclick="downloadAllPhotos()">
+    📥 Preuzmi sve fotografije
+  </button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+<!-- POSVETE -->
+<div class="settings-group checkbox-row">
+  <label class="checkbox-label">
+    <input type="checkbox" id="showDedications">
+    <span class="custom-check"></span>
+    Prikaži posvete u slideshowu
+  </label>
+</div>
+    <!-- BUTTON -->
+    <button class="btn-primary full-width" onclick="closeSettings()">
+      Spremi postavke
+    </button>
 
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+let selectedPhotoId = null;
+let selectedWrapper = null;
+let selectedVisible = true;
+let showAuthor = true;
+let showDedications = false;
+let dedicationTimeout = null;
 const firebaseConfig = {
   apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
   authDomain: "photodump-ml.firebaseapp.com",
@@ -57,8 +130,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-
-// 📸 LOAD SVIH SLIKA
+// -------------------- GALERIJA --------------------
 async function loadAllImages() {
     const q = query(collection(db, "photos"), orderBy("created", "desc"));
     const snapshot = await getDocs(q);
@@ -66,16 +138,28 @@ async function loadAllImages() {
     const gallery = document.getElementById("gallery");
     gallery.innerHTML = "";
 
-    snapshot.forEach(doc => {
-        const data = doc.data();
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
 
         const wrapper = document.createElement("div");
         wrapper.className = "photo-card";
+        wrapper.style.position = "relative";
 
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
+        if (data.visible === false) {
+            wrapper.classList.add("hidden-photo");
+        }
 
-        wrapper.appendChild(img);
+        if (data.type === "video") {
+            const video = document.createElement("video");
+            video.src = data.imageUrl;
+            video.controls = true;
+            video.className = "gallery-video";
+            wrapper.appendChild(video);
+        } else {
+            const img = document.createElement("img");
+            img.src = data.imageUrl;
+            wrapper.appendChild(img);
+        }
 
         if (data.caption) {
             const cap = document.createElement("div");
@@ -84,12 +168,82 @@ async function loadAllImages() {
             wrapper.appendChild(cap);
         }
 
+        // ---------------- LONG PRESS ----------------
+
+        let pressTimer;
+
+        wrapper.onmousedown = () => startPress();
+        wrapper.ontouchstart = () => startPress();
+
+        wrapper.onmouseup = cancelPress;
+        wrapper.onmouseleave = cancelPress;
+        wrapper.ontouchend = cancelPress;
+
+        function startPress() {
+            pressTimer = setTimeout(() => {
+
+                selectedPhotoId = docSnap.id;
+                selectedWrapper = wrapper;
+                selectedVisible = !wrapper.classList.contains("hidden-photo");
+
+                const title = selectedVisible
+                    ? "Maknuti sliku iz prikaza?"
+                    : "Vratiti sliku u prikaz?";
+
+                document.getElementById("photoActionTitle").innerText = title;
+                document.getElementById("photoActionModal").style.display = "flex";
+
+            }, 600);
+        }
+
+        function cancelPress() {
+            clearTimeout(pressTimer);
+        }
+
+        // ---------------- END ----------------
+
         gallery.appendChild(wrapper);
     });
 }
+  window.downloadAllPhotos = async function() {
+  const zip = new JSZip();
+
+  const snapshot = await getDocs(collection(db, "photos"));
+
+  let count = 0;
+
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+
+    if (data.type === "video") continue; // preskoči video
+
+    const response = await fetch(data.imageUrl);
+    const blob = await response.blob();
+
+    zip.file(`photo_${count}.jpg`, blob);
+    count++;
+  }
+
+  const content = await zip.generateAsync({ type: "blob" });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(content);
+  link.download = "fotografije.zip";
+  link.click();
+};
+window.openSettings = function() {
+  document.getElementById("settingsModal").style.display = "flex";
+};
 
 
-// 💌 LOAD POSVETA
+window.closeSettings = function() {
+  showDedications = document.getElementById("showDedications").checked;
+  showAuthor = document.getElementById("showAuthor").checked;
+
+  document.getElementById("settingsModal").style.display = "none";
+};
+// -------------------- POSVETE --------------------
+
 async function loadDedications() {
     const q = query(collection(db, "dedications"), orderBy("created", "desc"));
     const snapshot = await getDocs(q);
@@ -112,15 +266,14 @@ async function loadDedications() {
             <div class="dedication-author">${data.name}</div>
         `;
 
-        // klik → otvori modal
         item.onclick = () => openDedicationModal(data);
 
         list.appendChild(item);
     });
 }
 
+// -------------------- TABOVI --------------------
 
-// 🔄 TAB SWITCH
 window.showAdminTab = function(tab) {
     document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
@@ -133,59 +286,183 @@ window.showAdminTab = function(tab) {
         document.querySelectorAll(".tab")[1].classList.add("active");
     }
 };
+
+// -------------------- MODAL --------------------
+
 window.openDedicationModal = function(data) {
   document.getElementById("dedicationFullText").innerText = data.text;
   document.getElementById("dedicationAuthor").innerText = "— " + data.name;
-
   document.getElementById("dedicationModal").style.display = "flex";
 };
 
 window.closeDedicationModal = function() {
   document.getElementById("dedicationModal").style.display = "none";
 };
-let slideshowInterval = null;
+
+// -------------------- SLIDESHOW --------------------
+
 let slideshowImages = [];
+let slideshowInterval = null;
+let unsubscribe = null;
+let overlay = null;
 
 window.startSlideshow = async function() {
-  const q = query(collection(db, "photos"));
-  const snapshot = await getDocs(q);
+await loadAllDedicationsForSlideshow();
+  if (overlay) return;
 
-  slideshowImages = [];
+  unsubscribe = onSnapshot(
+    query(collection(db, "photos"), orderBy("created", "desc")),
+    (snapshot) => {
 
-  snapshot.forEach(doc => {
-    slideshowImages.push(doc.data().imageUrl);
+      slideshowImages = [];
+
+snapshot.forEach(doc => {
+  const data = doc.data();
+
+  // 🔥 FILTER
+  if (data.visible === false) return;
+  if (data.type === "video") return;
+
+  slideshowImages.unshift({
+    url: data.imageUrl,
+    user: data.user || "Gost",
+    caption: data.caption || ""
+  });
+});
+
+      if (slideshowImages.length > 0 && !overlay) {
+        showSlideshow();
+      }
+    }
+  );
+};
+window.confirmPhotoAction = async function(confirm) {
+  document.getElementById("photoActionModal").style.display = "none";
+
+  if (!confirm) return;
+
+  const newState = !selectedVisible;
+
+  await updateDoc(doc(db, "photos", selectedPhotoId), {
+    visible: newState
   });
 
-  if (slideshowImages.length === 0) {
-    alert("Nema slika 😢");
-    return;
+  if (!newState) {
+    selectedWrapper.classList.add("hidden-photo");
+  } else {
+    selectedWrapper.classList.remove("hidden-photo");
   }
-
-  showSlideshow();
 };
 function showSlideshow() {
-  const overlay = document.createElement("div");
+  
+  overlay = document.createElement("div");
   overlay.id = "slideshowOverlay";
 
   const img = document.createElement("img");
+  img.className = "slideshow-img";
+  img.style.opacity = 0;
+
+ const info = document.createElement("div");
+info.className = "slideshow-info info-bottom";
+info.style.opacity = 0;
 
   overlay.appendChild(img);
+  overlay.appendChild(info);
   document.body.appendChild(overlay);
 
   function nextImage() {
-    const randomIndex = Math.floor(Math.random() * slideshowImages.length);
-    img.src = slideshowImages[randomIndex];
+    info.className = "slideshow-info info-bottom";
+  info.style.display = "block";
+    if (slideshowImages.length === 0) return;
+
+let showDedicationNow = showDedications && Math.random() < 0.3;
+
+ if (showDedicationNow) {
+    showRandomDedication(img, info);
+
+    clearInterval(slideshowInterval);
+    clearTimeout(dedicationTimeout);
+
+    dedicationTimeout = setTimeout(() => {
+      slideshowInterval = setInterval(nextImage, document.getElementById("slideSpeed").value);
+      nextImage();
+    }, 9000);
+
+    return; // 🔥 OVO JE KLJUČNO
+  }
+
+const random = Math.floor(Math.random() * slideshowImages.length);
+const data = slideshowImages[random];
+
+    img.style.opacity = 0;
+    info.style.opacity = 0;
+
+    setTimeout(() => {
+      img.src = data.url;
+
+info.innerHTML = `
+  ${showAuthor ? `<div class="slideshow-user">${data.user}</div>` : ""}
+  ${data.caption ? `<div class="slideshow-caption">${data.caption}</div>` : ""}
+`;
+
+      img.style.opacity = 1;
+      info.style.opacity = 1;
+
+    }, 300);
   }
 
   nextImage();
+  const speed = document.getElementById("slideSpeed").value;
+slideshowInterval = setInterval(nextImage, speed);
 
-  slideshowInterval = setInterval(nextImage, 3000);
-
-  // klik → stop
   overlay.onclick = () => {
     clearInterval(slideshowInterval);
+    if (unsubscribe) unsubscribe();
+
     overlay.remove();
+    overlay = null;
   };
+}
+let allDedications = [];
+
+async function loadAllDedicationsForSlideshow() {
+  const snapshot = await getDocs(collection(db, "dedications"));
+
+  allDedications = [];
+
+  snapshot.forEach(doc => {
+    allDedications.push(doc.data());
+  });
+}
+function showRandomDedication(img, info) {
+  info.className = "slideshow-info info-center";
+info.style.display = "flex";
+  if (allDedications.length === 0) return;
+
+  const random = Math.floor(Math.random() * allDedications.length);
+  const data = allDedications[random];
+
+  img.style.opacity = 0;
+  info.style.opacity = 0;
+
+  setTimeout(() => {
+    img.src = "";
+
+info.innerHTML = `
+  <div class="dedication-wrapper">
+    <div class="dedication-text">“${data.text}”</div>
+    <div class="dedication-author">— ${data.name}</div>
+  </div>
+`;
+const wrapper = info.querySelector(".dedication-wrapper");
+
+// mali delay da se layout stabilizira
+requestAnimationFrame(() => {
+  wrapper.style.opacity = 1;
+});
+    img.style.opacity = 0;
+    info.style.opacity = 1;
+  }, 300);
 }
 // INIT
 loadAllImages();

@@ -25,12 +25,11 @@
 </div>
 <div class="topbar">
     💍 PhotoDump M&L
-    <span class="admin-btn" onclick="openAdminModal()">⚙️</span>
 </div>
 
 <div class="container">
 
-    <h2>Dobrodošli na naš veliki dan 💍</h2>
+    <h2 onclick="secretAdminClick()">Dobrodošli na naš veliki dan 💍</h2>
 
     <p class="subtitle">
         Dragi naši,<br><br>
@@ -43,12 +42,20 @@
     <button onclick="enterApp()">Ulazak</button>
 </div>
 <div id="adminModal" class="modal">
-  <div class="modal-content">
-    <h3>Admin pristup</h3>
-    <input type="password" id="adminPass" placeholder="Upiši šifru">
-    <button onclick="checkAdmin()">Ulaz</button>
+  <div class="admin-modal-box">
+
+    <div class="modal-header">
+      <span>Admin pristup</span>
+      <span class="close-btn" onclick="closeAdminModal()">✖</span>
+    </div>
+
+    <input type="password" id="adminPass" placeholder="Unesi lozinku">
+
+    <button class="btn-primary" onclick="checkAdmin()">Ulaz</button>
+
   </div>
 </div>
+
 <script type="module" src="script.js"></script>
 </body>
 </html>
