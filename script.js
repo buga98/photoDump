@@ -11,17 +11,22 @@ function enterApp() {
     window.location.href = "app.html";
 }
 
-if (window.location.pathname.includes("app.html")) {
-    const user = localStorage.getItem("user");
+window.addEventListener("DOMContentLoaded", () => {
+    const welcomeEl = document.getElementById("welcome");
 
-    if (!user) {
-        window.location.href = "index.html";
-    } else {
-        document.getElementById("welcome").innerText = "Pozdrav, " + user;
+    if (welcomeEl) {
+        const user = localStorage.getItem("user");
 
-        window.loadMyImages(user);
+        if (!user) {
+            window.location.href = "index.html";
+        } else {
+            welcomeEl.innerText = "Pozdrav, " + user;
+
+            // 🔥 OVO SAD SIGURNO RADI
+            window.loadMyImages(user);
+        }
     }
-}
+});
 
 async function uploadFile(files) {
     const user = localStorage.getItem("user");
