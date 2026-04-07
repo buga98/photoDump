@@ -79,16 +79,22 @@
 
     return url;
   }
-  window.loadMyImages = async function(user) {
-  const q = query(collection(db, "photos"), where("user", "==", user));
+ window.loadMyImages = async function(user) {
+  console.log("🔥 Pokrećem loadMyImages za:", user);
+
+  const q = collection(db, "photos"); // bez filtera
 
   const querySnapshot = await getDocs(q);
+
+  console.log("📦 Broj slika u bazi:", querySnapshot.size);
 
   const gallery = document.getElementById("gallery");
   gallery.innerHTML = "";
 
   querySnapshot.forEach((doc) => {
     const data = doc.data();
+
+    console.log("🖼 Slika:", data);
 
     const img = document.createElement("img");
     img.src = data.imageUrl;
