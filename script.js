@@ -11,22 +11,6 @@ function enterApp() {
     window.location.href = "app.html";
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    const welcomeEl = document.getElementById("welcome");
-
-    if (welcomeEl) {
-        const user = localStorage.getItem("user");
-
-        if (!user) {
-            window.location.href = "index.html";
-        } else {
-            welcomeEl.innerText = "Pozdrav, " + user;
-
-            // 🔥 OVO SAD SIGURNO RADI
-            window.loadMyImages(user);
-        }
-    }
-});
 
 async function uploadFile(files) {
     const user = localStorage.getItem("user");
