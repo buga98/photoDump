@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>PhotoDump</title>
+    <link rel="stylesheet" href="style.css">
+   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="hearts">
+    <span>💖</span>
+    <span>💗</span>
+    <span>💘</span>
+    <span>💞</span>
+    <span>💕</span>
+</div>
+<div class="topbar">💍 PhotoDump M&L</div>
+
+<div class="container">
+    <h3 id="welcome"></h3>
+<h4 style="opacity:0.6; margin-top:-10px;">
+    Dodaj svoje uspomene 📸
+</h4>
+<label class="upload-box">
+    <div class="custom-upload">
+        📷 Slikaj
+    </div>
+    <input type="file" accept="image/*" capture="environment" onchange="uploadFile(this.files)">
+</label>
+<label class="upload-box">
+    <div class="custom-upload">
+        🖼 Odaberi slike
+    </div>
+    <input type="file" accept="image/*" multiple onchange="uploadFile(this.files)">
+</label>
+
+    <h3>Moje slike</h3>
+    <div id="gallery"></div>
+</div>
+
+<script src="script.js"></script>
+<div id="toast"></div>
+</body>
+</html>
