@@ -25,109 +25,50 @@
 <div class="topbar">💍 PhotoDump M&L</div>
 
 <div class="container">
-    <h3 id="welcome"></h3>
-<h4 style="opacity:0.6; margin-top:-10px;">
-    Dodaj svoje uspomene 📸
-</h4>
-<label class="upload-box">
-    <div class="custom-upload">
-        📷 Slikaj
-    </div>
-    <input type="file" accept="image/*" capture="environment" onchange="uploadFile(this.files)">
-</label>
-<label class="upload-box">
-    <div class="custom-upload">
-        🖼 Odaberi slike
-    </div>
-    <input type="file" accept="image/*" multiple onchange="uploadFile(this.files)">
-</label>
+   <h3 id="welcome"></h3>
 
-    <h3>Moje slike</h3>
-    <div id="gallery"></div>
+<!-- TABOVI -->
+<div class="tabs">
+  <button class="tab active" onclick="showTab('photos')">📸 Fotografije</button>
+  <button class="tab" onclick="showTab('dedication')">💌 Posveta</button>
 </div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
-  import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
-    authDomain: "photodump-ml.firebaseapp.com",
-    projectId: "photodump-ml",
-    storageBucket: "photodump-ml.firebasestorage.app",
-    messagingSenderId: "33564506308",
-    appId: "1:33564506308:web:83f8a2127d3dc18e51b191"
-  };
+<!-- FOTOGRAFIJE -->
+<div id="photosTab" class="tab-content active">
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
+  <label class="upload-box">
+    <div class="custom-upload">📷 Slikaj</div>
+    <input type="file" accept="image/*" capture="environment" onchange="uploadFile(this.files)">
+  </label>
 
-window.uploadToFirebase = function(file, user, onProgress) {
-  return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
+  <label class="upload-box">
+    <div class="custom-upload">🖼 Odaberi slike</div>
+    <input type="file" accept="image/*" multiple onchange="uploadFile(this.files)">
+  </label>
 
-    const uploadTask = uploadBytesResumable(storageRef, file);
+  <h3>Moje slike</h3>
+  <div id="gallery"></div>
 
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        if (onProgress) onProgress(percent);
-      },
-      (error) => reject(error),
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
+</div>
 
-        await addDoc(collection(db, "photos"), {
-          user: user,
-          imageUrl: url,
-          created: new Date()
-        });
+<div id="dedicationTab" class="tab-content">
 
-        resolve(url);
-      }
-    );
-  });
-};
- window.loadMyImages = async function(user) {
-  console.log("🔥 Pokrećem loadMyImages za:", user);
+  <div class="dedication-box">
+    <textarea id="dedicationText" placeholder="Napiši posvetu mladencima ❤️"></textarea>
+  </div>
 
-  const q = collection(db, "photos"); // bez filtera
-
-  const q = query(
-  collection(db, "photos"),
-  where("user", "==", user)
-);
-
-  console.log("📦 Broj slika u bazi:", querySnapshot.size);
-
-  const gallery = document.getElementById("gallery");
-  gallery.innerHTML = "";
-
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-
-    console.log("🖼 Slika:", data);
-
-    const img = document.createElement("img");
-    img.src = data.imageUrl;
-
-    gallery.appendChild(img);
-  });
-}
-const user = localStorage.getItem("user");
-
-if (!user) {
-  window.location.href = "index.html";
-} else {
-  document.getElementById("welcome").innerText = "Pozdrav, " + user;
-
-  // 🔥 odmah učitaj slike (Firebase je spreman)
-  window.loadMyImages(user);
-}
-</script>
-<script src="script.js"></script>
+  <button class="btn-primary" onclick="saveDedication()">
+    💌 Dodaj posvetu
+  </button>
+<div id="successModal" class="modal">
+  <div class="modal-box">
+    <h3>💖 Hvala vam!</h3>
+    <p id="successMessage"></p>
+    <button onclick="closeSuccessModal()">Zatvori</button>
+  </div>
+</div>
+</div>
+<script type="module" src="script.js"></script>
 <div id="toast"></div>
 </body>
 </html>

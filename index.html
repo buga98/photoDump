@@ -23,7 +23,10 @@
     <span>💞</span>
     <span>💕</span>
 </div>
-<div class="topbar">💍 PhotoDump M&L</div>
+<div class="topbar">
+    💍 PhotoDump M&L
+    <span class="admin-btn" onclick="openAdminModal()">⚙️</span>
+</div>
 
 <div class="container">
 
@@ -35,13 +38,17 @@
         Hvala Vam što ste dio naše priče ❤️<br><br>
 
         Mihael & Lana
-    </p>
-
-    <input type="text" id="name" placeholder="Ime i prezime">
-    <br>
-    <button onclick="enterApp()">Uđi</button>
+    </p><br>
+    <input type="text" id="name" placeholder="Tvoje ime i prezime">
+    <button onclick="enterApp()">Ulazak</button>
 </div>
-
-<script src="script.js"></script>
+<div id="adminModal" class="modal">
+  <div class="modal-content">
+    <h3>Admin pristup</h3>
+    <input type="password" id="adminPass" placeholder="Upiši šifru">
+    <button onclick="checkAdmin()">Ulaz</button>
+  </div>
+</div>
+<script type="module" src="script.js"></script>
 </body>
 </html>

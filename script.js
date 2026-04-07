@@ -1,26 +1,194 @@
-// LOGIN
-function enterApp() {
-    const name = document.getElementById("name").value;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getFirestore, doc, setDoc, addDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
+  authDomain: "photodump-ml.firebaseapp.com",
+  projectId: "photodump-ml",
+  storageBucket: "photodump-ml.firebasestorage.app",
+  messagingSenderId: "33564506308",
+  appId: "1:33564506308:web:83f8a2127d3dc18e51b191"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+window.enterApp = function() {
+    const name = document.getElementById("name").value.trim();
 
     if (!name) {
-        alert("Upiši ime!");
+        alert("Upiši ime i prezime");
         return;
     }
 
-    localStorage.setItem("user", name);
+    const userId = Date.now().toString();
+
+    localStorage.setItem("userId", userId);
+    localStorage.setItem("name", name);
+
+    createUser(userId, name);
+
     window.location.href = "app.html";
+};
+window.uploadToFirebase = function(file, user, onProgress) {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
+
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        if (onProgress) onProgress(percent);
+      },
+      reject,
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
+
+        await addDoc(collection(db, "photos"), {
+          imageUrl: url,
+          user: user, // 🔥 VAŽNO!
+          created: new Date()
+        });
+
+        resolve(url);
+      }
+    );
+  });
+};
+
+window.showTab = function(tab) {
+  document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+  if (tab === "photos") {
+    document.getElementById("photosTab").classList.add("active");
+    document.querySelectorAll(".tab")[0].classList.add("active");
+  } else {
+    document.getElementById("dedicationTab").classList.add("active");
+    document.querySelectorAll(".tab")[1].classList.add("active");
+  }
+};
+
+window.saveDedication = async function() {
+  const text = document.getElementById("dedicationText").value.trim();
+  const name = localStorage.getItem("name");
+
+  if (!text) {
+    alert("Upiši posvetu");
+    return;
+  }
+
+  await addDoc(collection(db, "dedications"), {
+    name: name,
+    text: text,
+    created: new Date()
+  });
+
+  document.getElementById("dedicationText").value = "";
+  showSuccessModal();
+};
+window.showSuccessModal = function() {
+  const message = `
+    Zahvaljujemo se na vašoj predivnoj posveti ❤️<br><br>
+    Uvijek ćemo ih rado čitati i čuvati kao dio
+    najljepših uspomena na naš dan 💍✨
+  `;
+
+  document.getElementById("successMessage").innerHTML = message;
+  document.getElementById("successModal").style.display = "flex";
+};
+
+window.closeSuccessModal = function() {
+  document.getElementById("successModal").style.display = "none";
+};
+
+window.loadMyImages = async function(user) {
+  const gallery = document.getElementById("gallery");
+  gallery.innerHTML = "Učitavanje...";
+
+  try {
+    const q = query(
+      collection(db, "photos"),
+      where("user", "==", user)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    gallery.innerHTML = "";
+
+    if (querySnapshot.empty) {
+      gallery.innerHTML = "<p style='opacity:0.6'>Nema još slika 📸</p>";
+      return;
+    }
+
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+
+      const img = document.createElement("img");
+      img.src = data.imageUrl;
+      img.className = "gallery-img";
+
+      // 🔥 klik za fullscreen
+      img.onclick = () => {
+        const full = document.createElement("div");
+        full.style.position = "fixed";
+        full.style.top = 0;
+        full.style.left = 0;
+        full.style.width = "100%";
+        full.style.height = "100%";
+        full.style.background = "rgba(0,0,0,0.9)";
+        full.style.display = "flex";
+        full.style.alignItems = "center";
+        full.style.justifyContent = "center";
+        full.style.zIndex = 999;
+
+        const bigImg = document.createElement("img");
+        bigImg.src = data.imageUrl;
+        bigImg.style.maxWidth = "90%";
+        bigImg.style.maxHeight = "90%";
+        bigImg.style.borderRadius = "10px";
+
+        full.appendChild(bigImg);
+
+        full.onclick = () => full.remove();
+
+        document.body.appendChild(full);
+      };
+
+      gallery.appendChild(img);
+    });
+
+  } catch (err) {
+    console.error(err);
+    gallery.innerHTML = "<p style='color:red'>Greška kod učitavanja 😢</p>";
+  }
+};
+const user = localStorage.getItem("name");
+
+const welcomeEl = document.getElementById("welcome");
+
+if (!user) {
+  window.location.href = "index.html";
+} else if (welcomeEl) {
+  welcomeEl.innerText = "Pozdrav, " + user;
+  loadMyImages(user);
 }
 
-
+window.createUser = async function(id, name) {
+    await setDoc(doc(db, "users", id), {
+        name: name,
+        created: new Date()
+    });
+};
 window.uploadFile = async function(files) {
-    const user = localStorage.getItem("user");
     const gallery = document.getElementById("gallery");
-
+    const user = localStorage.getItem("name");
     for (let file of files) {
-        // wrapper za sliku + progress
         const wrapper = document.createElement("div");
         wrapper.className = "upload-item";
-
         const progress = document.createElement("div");
         progress.className = "upload-progress";
 
@@ -37,7 +205,6 @@ window.uploadFile = async function(files) {
         wrapper.appendChild(progress);
         gallery.appendChild(wrapper);
 
-        // upload sa progressom
         window.uploadToFirebase(file, user, (percent) => {
             progress.style.width = percent + "%";
         }).then((url) => {
@@ -48,6 +215,17 @@ window.uploadFile = async function(files) {
 
     showToast("Upload u tijeku 🚀");
 }
+window.checkAdmin = function() {
+  const pass = document.getElementById("adminPass").value;
+
+  if (pass === "admin") {
+    window.location.href = "admin.html";
+  } else {
+    alert("Kriva šifra");
+  }
+};
+
+
 function showToast(message) {
     const toast = document.getElementById("toast");
     toast.innerText = message;
@@ -56,4 +234,20 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.remove("show");
     }, 2000);
+}
+window.openAdminModal = function() {
+  const modal = document.getElementById("adminModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+};
+
+function checkAdmin() {
+    const pass = document.getElementById("adminPass").value;
+
+    if (pass === "admin") {
+        window.location.href = "admin.html";
+    } else {
+        alert("Kriva šifra");
+    }
 }

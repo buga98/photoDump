@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - PhotoDump</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+    💍 Admin pregled
+</div>
+
+<div class="container">
+
+    <!-- TABOVI -->
+    <div class="tabs">
+        <button class="tab active" onclick="showAdminTab('photos')">📸 Slike</button>
+        <button class="tab" onclick="showAdminTab('dedications')">💌 Posvete</button>
+    </div>
+<button class="btn-primary" onclick="startSlideshow()">
+  ▶️ Pokreni slideshow
+</button>
+    <!-- SLIKE -->
+    <div id="adminPhotos" class="tab-content active">
+        <div id="gallery"></div>
+    </div>
+
+    <!-- POSVETE -->
+    <div id="adminDedications" class="tab-content">
+        <div id="dedicationsList"></div>
+    </div>
+<div id="dedicationModal" class="modal">
+  <div class="modal-box">
+    <p id="dedicationFullText"></p>
+    <div id="dedicationAuthor"></div>
+    <button onclick="closeDedicationModal()">Zatvori</button>
+  </div>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
+  authDomain: "photodump-ml.firebaseapp.com",
+  projectId: "photodump-ml",
+  storageBucket: "photodump-ml.firebasestorage.app",
+  messagingSenderId: "33564506308",
+  appId: "1:33564506308:web:83f8a2127d3dc18e51b191"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+
+// 📸 LOAD SVIH SLIKA
+async function loadAllImages() {
+    const q = query(collection(db, "photos"), orderBy("created", "desc"));
+    const snapshot = await getDocs(q);
+
+    const gallery = document.getElementById("gallery");
+    gallery.innerHTML = "";
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "photo-card";
+
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
+
+        wrapper.appendChild(img);
+
+        if (data.caption) {
+            const cap = document.createElement("div");
+            cap.className = "photo-caption";
+            cap.innerText = data.caption;
+            wrapper.appendChild(cap);
+        }
+
+        gallery.appendChild(wrapper);
+    });
+}
+
+
+// 💌 LOAD POSVETA
+async function loadDedications() {
+    const q = query(collection(db, "dedications"), orderBy("created", "desc"));
+    const snapshot = await getDocs(q);
+
+    const list = document.getElementById("dedicationsList");
+    list.innerHTML = "";
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+
+        const preview = data.text.length > 50 
+            ? data.text.substring(0, 50) + "..." 
+            : data.text;
+
+        const item = document.createElement("div");
+        item.className = "dedication-card";
+
+        item.innerHTML = `
+            <div class="dedication-preview">${preview}</div>
+            <div class="dedication-author">${data.name}</div>
+        `;
+
+        // klik → otvori modal
+        item.onclick = () => openDedicationModal(data);
+
+        list.appendChild(item);
+    });
+}
+
+
+// 🔄 TAB SWITCH
+window.showAdminTab = function(tab) {
+    document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+    if (tab === "photos") {
+        document.getElementById("adminPhotos").classList.add("active");
+        document.querySelectorAll(".tab")[0].classList.add("active");
+    } else {
+        document.getElementById("adminDedications").classList.add("active");
+        document.querySelectorAll(".tab")[1].classList.add("active");
+    }
+};
+window.openDedicationModal = function(data) {
+  document.getElementById("dedicationFullText").innerText = data.text;
+  document.getElementById("dedicationAuthor").innerText = "— " + data.name;
+
+  document.getElementById("dedicationModal").style.display = "flex";
+};
+
+window.closeDedicationModal = function() {
+  document.getElementById("dedicationModal").style.display = "none";
+};
+let slideshowInterval = null;
+let slideshowImages = [];
+
+window.startSlideshow = async function() {
+  const q = query(collection(db, "photos"));
+  const snapshot = await getDocs(q);
+
+  slideshowImages = [];
+
+  snapshot.forEach(doc => {
+    slideshowImages.push(doc.data().imageUrl);
+  });
+
+  if (slideshowImages.length === 0) {
+    alert("Nema slika 😢");
+    return;
+  }
+
+  showSlideshow();
+};
+function showSlideshow() {
+  const overlay = document.createElement("div");
+  overlay.id = "slideshowOverlay";
+
+  const img = document.createElement("img");
+
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+
+  function nextImage() {
+    const randomIndex = Math.floor(Math.random() * slideshowImages.length);
+    img.src = slideshowImages[randomIndex];
+  }
+
+  nextImage();
+
+  slideshowInterval = setInterval(nextImage, 3000);
+
+  // klik → stop
+  overlay.onclick = () => {
+    clearInterval(slideshowInterval);
+    overlay.remove();
+  };
+}
+// INIT
+loadAllImages();
+loadDedications();
+
+</script>
+
+</body>
+</html>
