@@ -11,7 +11,6 @@ function enterApp() {
     window.location.href = "app.html";
 }
 
-// PROVJERA SAMO NA APP STRANICI
 if (window.location.pathname.includes("app.html")) {
     const user = localStorage.getItem("user");
 
@@ -19,6 +18,8 @@ if (window.location.pathname.includes("app.html")) {
         window.location.href = "index.html";
     } else {
         document.getElementById("welcome").innerText = "Pozdrav, " + user;
+
+        window.loadMyImages(user);
     }
 }
 

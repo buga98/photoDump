@@ -48,7 +48,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
@@ -79,6 +79,23 @@
 
     return url;
   }
+  window.loadMyImages = async function(user) {
+  const q = query(collection(db, "photos"), where("user", "==", user));
+
+  const querySnapshot = await getDocs(q);
+
+  const gallery = document.getElementById("gallery");
+  gallery.innerHTML = "";
+
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+
+    const img = document.createElement("img");
+    img.src = data.imageUrl;
+
+    gallery.appendChild(img);
+  });
+}
 </script>
 <script src="script.js"></script>
 <div id="toast"></div>
