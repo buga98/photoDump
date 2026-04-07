@@ -47,7 +47,7 @@
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
   import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -63,22 +63,33 @@
   const db = getFirestore(app);
   const storage = getStorage(app);
 
-  // GLOBALNA FUNKCIJA
-  window.uploadToFirebase = async function(file, user) {
+window.uploadToFirebase = function(file, user, onProgress) {
+  return new Promise((resolve, reject) => {
     const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
 
-    await uploadBytes(storageRef, file);
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    const url = await getDownloadURL(storageRef);
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        if (onProgress) onProgress(percent);
+      },
+      (error) => reject(error),
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
 
-    await addDoc(collection(db, "photos"), {
-      user: user,
-      imageUrl: url,
-      created: new Date()
-    });
+        await addDoc(collection(db, "photos"), {
+          user: user,
+          imageUrl: url,
+          created: new Date()
+        });
 
-    return url;
-  }
+        resolve(url);
+      }
+    );
+  });
+};
  window.loadMyImages = async function(user) {
   console.log("🔥 Pokrećem loadMyImages za:", user);
 

@@ -298,3 +298,16 @@ body {
     z-index: 2;
 }
 
+.upload-item {
+    position: relative;
+}
+
+.upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 5px;
+    width: 0%;
+    background: #e91e63;
+    border-radius: 0 0 12px 12px;
+}
