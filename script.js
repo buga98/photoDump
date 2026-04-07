@@ -12,7 +12,7 @@ function enterApp() {
 }
 
 
-async function uploadFile(files) {
+window.uploadFile = async function(files) {
     const user = localStorage.getItem("user");
     const gallery = document.getElementById("gallery");
 
@@ -27,8 +27,6 @@ async function uploadFile(files) {
         const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
 
-        const progress = document.createElement("div");
-        progress.style.position = "absolute";
         progress.style.bottom = "0";
         progress.style.left = "0";
         progress.style.height = "5px";

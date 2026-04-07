@@ -48,7 +48,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
-  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
@@ -95,7 +95,10 @@ window.uploadToFirebase = function(file, user, onProgress) {
 
   const q = collection(db, "photos"); // bez filtera
 
-  const querySnapshot = await getDocs(q);
+  const q = query(
+  collection(db, "photos"),
+  where("user", "==", user)
+);
 
   console.log("📦 Broj slika u bazi:", querySnapshot.size);
 
