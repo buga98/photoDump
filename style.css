@@ -601,18 +601,3 @@ button:active {
           invert(38%) sepia(91%) saturate(749%) 
           hue-rotate(309deg) brightness(95%) contrast(92%);
 }
-.nav-item:nth-child(2) {
-  transform: translateY(-10px);
-}
-
-.nav-item:nth-child(2) img {
-  background: #e91e63;
-  padding: 10px;
-  border-radius: 50%;
-  filter: none;
-  opacity: 1;
-  box-shadow: 0 5px 15px rgba(233,30,99,0.4);
-}
-.feed {
-  min-height: calc(100vh - 160px);
-}
