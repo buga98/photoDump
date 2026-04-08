@@ -1,46 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-    <title>PhotoDump M&L</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
+<title>PhotoDump M&L</title>
+
+<link rel="stylesheet" href="style.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e91e63">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <link rel="apple-touch-icon" href="icon.png">
 </head>
+
 <body>
-<div class="hearts">
-    <span>💖</span>
-    <span>💗</span>
-    <span>💘</span>
-    <span>💞</span>
-    <span>💕</span>
-</div>
+
+<!-- floating slike -->
+<div class="floating-container"></div>
+
+<!-- top bar -->
 <div class="topbar">
-    💍 PhotoDump M&L
+    💍 Mihael & Lana
 </div>
 
-<div class="container">
+<!-- MAIN CARD -->
+<div class="center-wrapper">
 
-    <h2 onclick="secretAdminClick()">Dobrodošli na naš veliki dan 💍</h2>
+    <div class="glass-card">
 
-    <p class="subtitle">
-        Dragi naši,<br><br>
-        želimo da ovaj dan zauvijek ostane u lijepom sjećanju i kroz vaše fotografije 📸<br>
-        Hvala Vam što ste dio naše priče ❤️<br><br>
+        <h1 onclick="secretAdminClick()">
+            Dobrodošli na naš veliki dan 💍
+        </h1>
 
-        Mihael & Lana
-    </p><br>
-    <input type="text" id="name" placeholder="Tvoje ime i prezime">
-    <button onclick="enterApp()">Ulazak</button>
+        <p class="subtitle">
+            Dragi naši,<br><br>
+            želimo da ovaj dan zauvijek ostane u lijepom sjećanju kroz vaše fotografije 📸<br>
+            Hvala vam što ste dio naše priče ❤️<br><br>
+
+            <span class="names">Mihael & Lana</span>
+        </p>
+
+        <input type="text" id="name" placeholder="Tvoje ime i prezime">
+
+        <button onclick="enterApp()">Ulazak</button>
+
+    </div>
+
 </div>
+
+<!-- ADMIN MODAL -->
 <div id="adminModal" class="modal">
   <div class="admin-modal-box">
 
@@ -57,5 +68,54 @@
 </div>
 
 <script type="module" src="script.js"></script>
+
+<script>
+window.addEventListener("load", () => {
+  document.body.classList.add("loaded");
+});
+
+// FLOATING SLIKE (mjehurići)
+document.addEventListener("DOMContentLoaded", () => {
+
+  const images = ["1.jpg","2.jpg","3.jpg","4.jpg"];
+  const container = document.querySelector(".floating-container");
+
+  images.forEach((imgSrc) => {
+
+    const el = document.createElement("div");
+    el.className = "bubble";
+
+    el.style.backgroundImage = `url(${imgSrc})`;
+
+    let x = Math.random() * window.innerWidth;
+    let y = Math.random() * window.innerHeight;
+
+    let dx = (Math.random() - 0.5) * 1.2;
+    let dy = (Math.random() - 0.5) * 1.2;
+
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    container.appendChild(el);
+
+    function move() {
+      x += dx;
+      y += dy;
+
+      if (x <= 0 || x >= window.innerWidth - 80) dx *= -1;
+      if (y <= 0 || y >= window.innerHeight - 80) dy *= -1;
+
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+
+      requestAnimationFrame(move);
+    }
+
+    move();
+  });
+
+});
+</script>
+
 </body>
 </html>

@@ -15,60 +15,101 @@
 <link rel="apple-touch-icon" href="icon.png">
 </head>
 <body>
-<div class="hearts">
-    <span>💖</span>
-    <span>💗</span>
-    <span>💘</span>
-    <span>💞</span>
-    <span>💕</span>
-</div>
-<div class="topbar">💍 PhotoDump M&L</div>
 
-<div class="container">
-   <h3 id="welcome"></h3>
+<div class="topbar">💍 Mihael & Lana</div>
 
-<!-- TABOVI -->
-<div class="tabs">
-  <button class="tab active" onclick="showTab('photos')">📸 Fotografije</button>
-  <button class="tab" onclick="showTab('dedication')">💌 Posveta</button>
-</div>
+<div class="app">
 
-<!-- FOTOGRAFIJE -->
-<div id="photosTab" class="tab-content active">
+  <!-- HOME -->
+  <div id="homeTab" class="screen active">
+    <div class="feed-header glass">
+  <h2>Galerija uspomena ❤️</h2>
+  <p>Svaka fotografija postaje dio naše priče</p>
+</div><br>
+    <div id="feed" class="feed grid"></div>
+  </div>
 
-  <label class="upload-box">
-    <div class="custom-upload">📷 Slikaj</div>
+  <!-- UPLOAD -->
+<div id="uploadTab" class="screen">
+
+  <!-- HEADER -->
+  <div class="upload-header glass">
+    <h2>Podijeli trenutak 📸</h2>
+    <p>Dodaj fotografiju i ostavi uspomenu 💍</p>
+  </div>
+
+  <!-- UPLOAD OPTIONS -->
+<div class="upload-actions">
+
+  <label class="upload-card">
+    <img src="kamera.png" class="upload-img">
+    <div class="upload-text">Uhvati trenutak</div>
     <input type="file" accept="image/*" capture="environment" onchange="uploadFile(this.files)">
   </label>
 
-  <label class="upload-box">
-    <div class="custom-upload">🖼 Odaberi slike</div>
+  <label class="upload-card">
+    <img src="galerija.png" class="upload-img">
+    <div class="upload-text">Odaberi slike</div>
     <input type="file" accept="image/*" multiple onchange="uploadFile(this.files)">
   </label>
 
-  <h3>Moje slike</h3>
-  <div id="gallery"></div>
-
 </div>
 
-<div id="dedicationTab" class="tab-content">
-
-  <div class="dedication-box">
+  <!-- DEDICATION -->
+  <div class="dedication-card-modern">
     <textarea id="dedicationText" placeholder="Napiši posvetu mladencima ❤️"></textarea>
   </div>
 
   <button class="btn-primary" onclick="saveDedication()">
     💌 Dodaj posvetu
   </button>
-<div id="successModal" class="modal">
-  <div class="modal-box">
-    <h3>💖 Hvala vam!</h3>
-    <p id="successMessage"></p>
-    <button onclick="closeSuccessModal()">Zatvori</button>
+
+</div>
+
+  <!-- PROFILE -->
+  <div id="profileTab" class="screen">
+    <div class="profile-header glass">
+
+  <h2><span id="welcome"></span> 💍</h2>
+
+  <p class="profile-sub">
+    Ovo su tvoje uspomene s našeg dana ❤️
+  </p>
+
+</div>
+    <div id="gallery"></div>
+  </div>
+
+</div>
+<div id="deleteModal" class="modal">
+  <div class="delete-box">
+
+    <h3>Želite li obrisati sliku?</h3>
+
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="confirmDelete()">Da, obriši</button>
+      <button class="btn-secondary" onclick="closeDelete()">Ne</button>      
+    </div>
+
   </div>
 </div>
+<!-- 🔥 NAVBAR (ovo ti fali!) -->
+<div class="navbar">
+  <div class="nav-item active" onclick="switchScreen('home')">
+    <img src="home.png">
+  </div>
+
+  <div class="nav-item" onclick="switchScreen('upload')">
+    <img src="add.png">
+  </div>
+
+  <div class="nav-item" onclick="switchScreen('profile')">
+    <img src="profile.png">
+  </div>
 </div>
+
 <script type="module" src="script.js"></script>
 <div id="toast"></div>
+
 </body>
 </html>

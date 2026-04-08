@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, doc, setDoc, addDoc, collection,getDoc, getDocs, query, where,deleteDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, onSnapshot, orderBy, doc, setDoc, addDoc, collection, getDoc, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
 
-
+/* ===== FIREBASE ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
   authDomain: "photodump-ml.firebaseapp.com",
@@ -15,43 +15,99 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
-window.enterApp = function() {
-    const name = document.getElementById("name").value.trim();
 
-    if (!name) {
-        alert("Upiši ime i prezime");
-        return;
+/* ===== ENTER APP ===== */
+window.enterApp = function () {
+  const name = document.getElementById("name").value.trim();
+
+  if (!name) {
+    alert("Upiši ime i prezime");
+    return;
+  }
+
+  const userId = Date.now().toString();
+
+  localStorage.setItem("userId", userId);
+  localStorage.setItem("name", name);
+
+  createUser(userId, name);
+
+  window.location.href = "app.html";
+};
+
+/* ===== LIVE FEED ===== */
+function loadFeed() {
+  const feed = document.getElementById("feed");
+  if (!feed) return;
+
+  const q = query(
+    collection(db, "photos"),
+    orderBy("created", "desc")
+  );
+
+  let isFirstLoad = true;
+
+  onSnapshot(q, (snapshot) => {
+
+    if (isFirstLoad) {
+      // 🔥 PRVI PUT – učitaj sve
+      feed.innerHTML = "";
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.visible === false) return;
+
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
+
+        img.addEventListener("click", () => {
+          openFullscreen(data.imageUrl);
+        });
+
+        feed.appendChild(img);
+      });
+
+      isFirstLoad = false;
+      return;
     }
 
-    const userId = Date.now().toString();
+    // 🔥 POSLIJE – samo nove slike
+    snapshot.docChanges().forEach((change) => {
 
-    localStorage.setItem("userId", userId);
-    localStorage.setItem("name", name);
+      if (change.type === "added") {
+        const data = change.doc.data();
+        if (data.visible === false) return;
 
-    createUser(userId, name);
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
 
-    window.location.href = "app.html";
-};
+        img.addEventListener("click", () => {
+          openFullscreen(data.imageUrl);
+        });
+
+        // 👉 nova ide na vrh
+        feed.prepend(img);
+      }
+
+    });
+
+  });
+}
+
+/* ===== DELETE ===== */
 let selectedPhotoId = null;
 
-window.confirmDelete = async function() {
+window.confirmDelete = async function () {
   document.getElementById("deleteModal").style.display = "none";
 
   const docRef = doc(db, "photos", selectedPhotoId);
-  const snap = await getDocs(query(collection(db, "photos")));
 
-  let imageUrl = null;
+  // 🔥 BRŽE
+  const snap = await getDoc(docRef);
+  const imageUrl = snap.exists() ? snap.data().imageUrl : null;
 
-  snap.forEach(d => {
-    if (d.id === selectedPhotoId) {
-      imageUrl = d.data().imageUrl;
-    }
-  });
-
-  // 🔥 DELETE FROM STORAGE
   if (imageUrl) {
     try {
-      const storage = getStorage();
       const imageRef = ref(storage, imageUrl);
       await deleteObject(imageRef);
     } catch (e) {
@@ -59,28 +115,28 @@ window.confirmDelete = async function() {
     }
   }
 
-  // 🔥 DELETE FROM FIRESTORE
   await deleteDoc(docRef);
-
-  loadMyImages(); // refresh
+  loadMyImages();
 };
 
-window.closeDelete = function() {
+window.closeDelete = function () {
   document.getElementById("deleteModal").style.display = "none";
 };
+
+/* ===== FULLSCREEN ===== */
 function openFullscreen(url) {
   const full = document.createElement("div");
 
-  full.style.position = "fixed";
-  full.style.top = 0;
-  full.style.left = 0;
-  full.style.width = "100%";
-  full.style.height = "100%";
-  full.style.background = "rgba(0,0,0,0.9)";
-  full.style.display = "flex";
-  full.style.alignItems = "center";
-  full.style.justifyContent = "center";
-  full.style.zIndex = 999;
+  full.style.cssText = `
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.9);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+  `;
 
   const img = document.createElement("img");
   img.src = url;
@@ -93,41 +149,61 @@ function openFullscreen(url) {
   document.body.appendChild(full);
 }
 
-window.openGallery = async function() {
+/* ===== PUBLIC GALLERY ===== */
+window.openGallery = async function () {
   document.getElementById("galleryModal").style.display = "flex";
 
   const gallery = document.getElementById("publicGallery");
   gallery.innerHTML = "Učitavanje...";
 
   const snapshot = await getDocs(collection(db, "photos"));
-
   gallery.innerHTML = "";
 
   snapshot.forEach(doc => {
     const data = doc.data();
 
-    // 🔥 FILTER
     if (data.visible === false) return;
     if (data.type === "video") return;
 
     const img = document.createElement("img");
     img.src = data.imageUrl;
-
-    // fullscreen
     img.onclick = () => openFullscreen(data.imageUrl);
 
     gallery.appendChild(img);
   });
 };
 
-window.closeGallery = function() {
+window.closeGallery = function () {
   document.getElementById("galleryModal").style.display = "none";
 };
 
-window.uploadToFirebase = function(file, user, onProgress) {
+/* ===== NAVIGATION ===== */
+window.switchScreen = function (screen) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+
+  if (screen === "home") {
+    document.getElementById("homeTab").classList.add("active");
+    document.querySelectorAll(".nav-item")[0].classList.add("active");
+  }
+
+  if (screen === "upload") {
+    document.getElementById("uploadTab").classList.add("active");
+    document.querySelectorAll(".nav-item")[1].classList.add("active");
+  }
+
+  if (screen === "profile") {
+    document.getElementById("profileTab").classList.add("active");
+    document.querySelectorAll(".nav-item")[2].classList.add("active");
+
+    loadMyImages();
+  }
+};
+
+/* ===== UPLOAD ===== */
+window.uploadToFirebase = function (file, user, onProgress) {
   return new Promise((resolve, reject) => {
     const storageRef = ref(storage, 'photos/' + Date.now() + '_' + file.name);
-
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(
@@ -142,9 +218,9 @@ window.uploadToFirebase = function(file, user, onProgress) {
 
         await addDoc(collection(db, "photos"), {
           imageUrl: url,
-          user: user, // 🔥 VAŽNO!
-          userId: localStorage.getItem("userId"), 
-          created: new Date()
+          user: user,
+          userId: localStorage.getItem("userId"),
+          created: Date.now() // 🔥 FIX
         });
 
         resolve(url);
@@ -153,9 +229,10 @@ window.uploadToFirebase = function(file, user, onProgress) {
   });
 };
 
+/* ===== ADMIN ===== */
 let clickCount = 0;
 
-window.secretAdminClick = function() {
+window.secretAdminClick = function () {
   clickCount++;
 
   if (clickCount === 3) {
@@ -163,37 +240,25 @@ window.secretAdminClick = function() {
     clickCount = 0;
   }
 
-  setTimeout(() => {
-    clickCount = 0;
-  }, 1000);
+  setTimeout(() => clickCount = 0, 1000);
 };
-window.closeAdminModal = function() {
+
+window.openAdminModal = function () {
+  document.getElementById("adminModal").style.display = "flex";
+};
+
+window.closeAdminModal = function () {
   document.getElementById("adminModal").style.display = "none";
 };
 
-window.openAdminModal = function() {
-  document.getElementById("adminModal").style.display = "flex";
-};
-window.onclick = function(e) {
+/* sigurniji click */
+window.addEventListener("click", function (e) {
   const modal = document.getElementById("adminModal");
-  if (e.target === modal) {
-    modal.style.display = "none";
-  }
-};
-window.showTab = function(tab) {
-  document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+  if (e.target === modal) modal.style.display = "none";
+});
 
-  if (tab === "photos") {
-    document.getElementById("photosTab").classList.add("active");
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  } else {
-    document.getElementById("dedicationTab").classList.add("active");
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-};
-
-window.saveDedication = async function() {
+/* ===== DEDICATION ===== */
+window.saveDedication = async function () {
   const text = document.getElementById("dedicationText").value.trim();
   const name = localStorage.getItem("name");
 
@@ -203,138 +268,147 @@ window.saveDedication = async function() {
   }
 
   await addDoc(collection(db, "dedications"), {
-    name: name,
-    text: text,
-    created: new Date()
+    name,
+    text,
+    created: Date.now() // 🔥 FIX
   });
 
   document.getElementById("dedicationText").value = "";
   showSuccessModal();
 };
-window.showSuccessModal = function() {
-  const message = `
-    Zahvaljujemo se na vašoj predivnoj posveti ❤️<br><br>
-    Uvijek ćemo ih rado čitati i čuvati kao dio
-    najljepših uspomena na naš dan 💍✨
-  `;
 
-  document.getElementById("successMessage").innerHTML = message;
+window.showSuccessModal = function () {
   document.getElementById("successModal").style.display = "flex";
 };
 
-window.closeSuccessModal = function() {
+window.closeSuccessModal = function () {
   document.getElementById("successModal").style.display = "none";
 };
 
-window.loadMyImages = async function() {
-    const userId = localStorage.getItem("userId");
-    const gallery = document.getElementById("gallery");
-    const name = localStorage.getItem("name");
-    
-    if (!gallery) return; // Sigurnosna provjera
-    
-    gallery.innerHTML = "<p>Učitavam tvoje slike...</p>";
+/* ===== PROFILE ===== */
+window.loadMyImages = async function () {
+  const gallery = document.getElementById("gallery");
+  const name = localStorage.getItem("name");
 
-    try {
-        const q = query(
-            collection(db, "photos"),
-            where("user", "==", name)
-        );
+  if (!gallery) return;
 
-        const snapshot = await getDocs(q);
-        gallery.innerHTML = ""; // Očisti loader
+  gallery.innerHTML = "<p style='grid-column:1/-1; opacity:0.6;'>Učitavam...</p>";
 
-        if (snapshot.empty) {
-            gallery.innerHTML = "<p style='grid-column: 1/-1; opacity: 0.6;'>Još nisi dodao nijednu sliku 📸</p>";
-            return;
-        }
+  try {
+    const q = query(
+      collection(db, "photos"),
+      where("user", "==", name)
+    );
 
-        snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const wrapper = document.createElement("div");
-            wrapper.className = "my-photo-item";
+    const snapshot = await getDocs(q);
 
-            const img = document.createElement("img");
-            img.src = data.imageUrl;
-            img.onclick = () => openFullscreen(data.imageUrl);
+    gallery.innerHTML = "";
 
-            wrapper.appendChild(img);
-
-            // Long press za brisanje
-            let pressTimer;
-            const startPress = () => {
-                pressTimer = setTimeout(() => {
-                    selectedPhotoId = docSnap.id;
-                    document.getElementById("deleteModal").style.display = "flex";
-                }, 700);
-            };
-            const cancelPress = () => clearTimeout(pressTimer);
-
-            wrapper.onmousedown = startPress;
-            wrapper.ontouchstart = startPress;
-            wrapper.onmouseup = cancelPress;
-            wrapper.ontouchend = cancelPress;
-
-            gallery.appendChild(wrapper);
-        });
-    } catch (error) {
-        console.error("Greška pri učitavanju:", error);
-        gallery.innerHTML = "Greška pri učitavanju slika.";
+    if (snapshot.empty) {
+      gallery.innerHTML = "<p style='grid-column:1/-1; opacity:0.6;'>Nema još tvojih slika 📸</p>";
+      return;
     }
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+
+      const img = document.createElement("img");
+      img.src = data.imageUrl;
+
+      let pressTimer;
+      let isLongPress = false;
+
+      /* ===== TOUCH START ===== */
+      img.addEventListener("touchstart", () => {
+        isLongPress = false;
+
+        pressTimer = setTimeout(() => {
+          isLongPress = true;
+          selectedPhotoId = docSnap.id;
+
+          document.getElementById("deleteModal").style.display = "flex";
+
+          // 🔥 optional vibracija
+          if (navigator.vibrate) navigator.vibrate(50);
+        }, 700);
+      });
+
+      /* ===== TOUCH END ===== */
+      img.addEventListener("touchend", () => {
+        clearTimeout(pressTimer);
+      });
+
+      /* ===== CLICK ===== */
+      img.addEventListener("click", () => {
+        if (!isLongPress) {
+          openFullscreen(data.imageUrl);
+        }
+      });
+
+      /* ===== CANCEL ===== */
+      img.addEventListener("touchmove", () => clearTimeout(pressTimer));
+      img.addEventListener("mouseleave", () => clearTimeout(pressTimer));
+
+      gallery.appendChild(img);
+    });
+
+  } catch (err) {
+    console.error(err);
+    gallery.innerHTML = "<p style='grid-column:1/-1;'>Greška pri učitavanju</p>";
+  }
 };
+
+/* ===== USER ===== */
 const user = localStorage.getItem("name");
 const welcomeEl = document.getElementById("welcome");
 
-const isIndex = window.location.pathname.includes("index.html");
-
-if (!user && !isIndex) {
+if (!user && !window.location.pathname.includes("index.html")) {
   window.location.href = "index.html";
 }
 
 if (user && welcomeEl) {
   welcomeEl.innerText = "Pozdrav, " + user;
-  loadMyImages(user);
 }
 
-window.createUser = async function(id, name) {
-    await setDoc(doc(db, "users", id), {
-        name: name,
-        created: new Date()
-    });
+/* ===== CREATE USER ===== */
+window.createUser = async function (id, name) {
+  await setDoc(doc(db, "users", id), {
+    name,
+    created: Date.now()
+  });
 };
-window.uploadFile = async function(files) {
-    const gallery = document.getElementById("gallery");
-    const user = localStorage.getItem("name");
-    for (let file of files) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "upload-item";
-        const progress = document.createElement("div");
-        progress.className = "upload-progress";
 
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
+/* ===== FILE UPLOAD ===== */
+window.uploadFile = async function (files) {
+  const gallery = document.getElementById("gallery");
+  if (!gallery) return;
 
-        progress.style.bottom = "0";
-        progress.style.left = "0";
-        progress.style.height = "5px";
-        progress.style.width = "0%";
-        progress.style.background = "#e91e63";
+  const user = localStorage.getItem("name");
 
-        wrapper.appendChild(img);
-        wrapper.appendChild(progress);
-        gallery.appendChild(wrapper);
+  for (let file of files) {
+    const wrapper = document.createElement("div");
+    const progress = document.createElement("div");
+    const img = document.createElement("img");
 
-        window.uploadToFirebase(file, user, (percent) => {
-            progress.style.width = percent + "%";
-        }).then((url) => {
-            img.src = url;
-            progress.remove();
-        });
-    }
+    img.src = URL.createObjectURL(file);
 
-    showToast("Upload u tijeku 🚀");
-}
-window.checkAdmin = function() {
+    wrapper.appendChild(img);
+    wrapper.appendChild(progress);
+    gallery.appendChild(wrapper);
+
+    uploadToFirebase(file, user, (percent) => {
+      progress.style.width = percent + "%";
+    }).then((url) => {
+      img.src = url;
+      progress.remove();
+    });
+  }
+
+  showToast("Upload u tijeku 🚀");
+};
+
+/* ===== ADMIN LOGIN ===== */
+window.checkAdmin = function () {
   const pass = document.getElementById("adminPass").value;
 
   if (pass === "admin") {
@@ -344,16 +418,16 @@ window.checkAdmin = function() {
   }
 };
 
-
+/* ===== TOAST ===== */
 function showToast(message) {
-    const toast = document.getElementById("toast");
-    toast.innerText = message;
-    toast.classList.add("show");
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.classList.add("show");
 
-    setTimeout(() => {
-        toast.classList.remove("show");
-    }, 2000);
+  setTimeout(() => toast.classList.remove("show"), 2000);
 }
 
-
-
+/* ===== AUTO LOAD ===== */
+if (document.getElementById("feed")) {
+  loadFeed();
+}
