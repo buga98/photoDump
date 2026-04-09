@@ -601,3 +601,318 @@ button:active {
           invert(38%) sepia(91%) saturate(749%) 
           hue-rotate(309deg) brightness(95%) contrast(92%);
 }
+/* HEADER */
+.admin-header.glass {
+  margin: 10px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(15px);
+  text-align: center;
+}
+
+/* STATS */
+.admin-stats {
+  display: flex;
+  justify-content: space-around;
+  margin: 10px 0;
+  font-size: 14px;
+  color: #e91e63;
+}
+
+/* ACTIONS */
+.admin-actions-grid {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+
+.admin-card {
+  flex: 1;
+  padding: 15px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(15px);
+  text-align: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.admin-card span {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.admin-card:active {
+  transform: scale(0.95);
+}
+
+/* FILTERI */
+.admin-filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+}
+
+.admin-filters button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+  background: #f1f1f1;
+}
+
+/* GRID */
+#gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.photo-card img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+}
+
+/* POSVETE */
+#dedicationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  background: rgba(0,0,0,0.6); /* 🔥 TAMNI OVERLAY */
+  
+  backdrop-filter: blur(5px); /* 🔥 LUX FEEL */
+
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+.modal-box {
+  background: white; /* 🔥 KLJUČNO */
+  padding: 20px;
+  border-radius: 20px;
+  width: 85%;
+  max-width: 320px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.admin-filters button {
+  flex: 1;
+  padding: 10px;
+
+  border-radius: 12px;
+  border: none;
+
+  background: white; /* 🔥 BITNO */
+  color: #e91e63;
+  font-weight: 500;
+
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.admin-filters button.active {
+  background: #e91e63;
+  color: white;
+}
+.admin-navbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+
+  display: flex;
+  justify-content: space-around;
+
+  padding: 10px 0;
+
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(15px);
+
+  border-top: 1px solid #eee;
+}
+
+.admin-nav-item img {
+  width: 26px;
+  opacity: 0.4;
+  transition: 0.2s;
+}
+
+.admin-nav-item.active img {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(233,30,99,0.5));
+}
+.dedication-card {
+  background: white;
+  border-radius: 16px;
+  padding: 14px;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+  transition: 0.2s;
+}
+
+.dedication-card:active {
+  transform: scale(0.97);
+}
+#dedicationFullText {
+  font-size: 16px;
+  line-height: 1.6;
+}
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+.hidden-photo img {
+  filter: grayscale(100%) blur(2px);
+  opacity: 0.5;
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ff4d88, #e91e63);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+}
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: #ffffff;
+  color: #333;
+  width: 88%;
+  max-width: 360px;
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+  position: relative;
+  z-index: 10000;
+}
+
+.settings-box {
+  background: #ffffff;
+  opacity: 1;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.admin-filters button {
+  background: #fff;
+  color: #e91e63;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.admin-filters button.active {
+  background: #e91e63;
+  color: #fff;
+}
+
+.admin-fullscreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.96);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.admin-fullscreen-img {
+  max-width: 95%;
+  max-height: 78%;
+  border-radius: 14px;
+  transition: 0.25s ease;
+}
+
+.admin-fullscreen-actions {
+  position: absolute;
+  bottom: 28px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#slideshowOverlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.slideshow-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* 🔥 OVO JE KLJUČ */
+  border-radius: 12px;
+}
+#slideshowOverlay {
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.slideshow-img {
+  max-width: 95%;
+  max-height: 85%;
+  object-fit: contain;
+  transition: opacity 0.3s ease;
+}
+
+.slideshow-info {
+  position: absolute;
+  bottom: 30px;
+  text-align: center;
+  color: white;
+  font-size: 16px;
+  opacity: 0.8;
+}
+.slideshow-img {
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
