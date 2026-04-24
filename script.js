@@ -1,15 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, onSnapshot, orderBy, doc, setDoc, addDoc, collection, getDoc, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, onSnapshot, orderBy, doc, setDoc, addDoc, collection, getDoc, getDocs, query, where, deleteDoc,updateDoc,increment,limit,startAfter } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
 
 /* ===== FIREBASE ===== */
 const firebaseConfig = {
-  apiKey: "AIzaSyAccA3xReidCOmkpZf_EDwIzb_SckGAM4Y",
-  authDomain: "photodump-ml.firebaseapp.com",
-  projectId: "photodump-ml",
-  storageBucket: "photodump-ml.firebasestorage.app",
-  messagingSenderId: "33564506308",
-  appId: "1:33564506308:web:83f8a2127d3dc18e51b191"
+  apiKey: "AIzaSyA3qAy-Ij6yPvOcfEvzguTak4CJCc1a5UU",
+  authDomain: "photodumpkrstenje.firebaseapp.com",
+  projectId: "photodumpkrstenje",
+  storageBucket: "photodumpkrstenje.firebasestorage.app",
+  messagingSenderId: "552390088463",
+  appId: "1:552390088463:web:ac5fd3c62359149eb9d07a"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -34,64 +34,255 @@ window.enterApp = function () {
 
   window.location.href = "app.html";
 };
+async function likePhoto(userLikeRef, photoId, card) {
+
+  const checkSnap = await getDoc(userLikeRef);
+
+  if (checkSnap.exists()) {
+    showBigHeart(card); // animacija smije
+    return false;
+  }
+
+  showBigHeart(card); // odmah
+
+  await setDoc(userLikeRef, {
+    created: Date.now()
+  });
+
+  await updateDoc(doc(db, "photos", photoId), {
+    likes: increment(1)
+  });
+
+  return true;
+}
+/* ===== LIVE FEED ===== */
+// GLOBAL CACHE (stavi jednom gore u script.js)
+// ==========================================
+// ULTRA FAST FEED (CACHE + LIVE FIRESTORE)
+// ==========================================
 
 /* ===== LIVE FEED ===== */
+
+const FEED_PAGE_SIZE = 24;
+const likedCache = new Set(JSON.parse(localStorage.getItem("likedPhotos") || "[]"));
+
+let feedStarted = false;
+let lastVisiblePhoto = null;
+let isLoadingMore = false;
+let hasMorePhotos = true;
+const renderedPhotos = new Map();
+
+function saveLikedCache() {
+  localStorage.setItem("likedPhotos", JSON.stringify([...likedCache]));
+}
+
 function loadFeed() {
   const feed = document.getElementById("feed");
-  if (!feed) return;
+  if (!feed || feedStarted) return;
 
-  const q = query(
+  feedStarted = true;
+  feed.innerHTML = "";
+
+  const firstQuery = query(
     collection(db, "photos"),
-    orderBy("created", "desc")
+    orderBy("created", "desc"),
+    limit(FEED_PAGE_SIZE)
   );
 
-  let isFirstLoad = true;
+  onSnapshot(firstQuery, (snapshot) => {
+    if (!snapshot.empty) {
+      lastVisiblePhoto = snapshot.docs[snapshot.docs.length - 1];
+    }
 
-  onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      renderFeedChange(change, feed, true);
+    });
 
-    if (isFirstLoad) {
-      // 🔥 PRVI PUT – učitaj sve
-      feed.innerHTML = "";
+    createFeedObserver(feed);
+  });
+}
 
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.visible === false) return;
+function renderFeedChange(change, feed, isLiveTop = false) {
+  const docSnap = change.doc;
+  const data = docSnap.data();
+  const photoId = docSnap.id;
 
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
+  if (change.type === "removed" || data.visible === false) {
+    const existing = renderedPhotos.get(photoId);
+    if (existing) {
+      existing.remove();
+      renderedPhotos.delete(photoId);
+    }
+    return;
+  }
 
-        img.addEventListener("click", () => {
-          openFullscreen(data.imageUrl);
-        });
+  if (change.type === "modified") {
+    const existing = renderedPhotos.get(photoId);
+    if (existing) {
+      const countEl = existing.querySelector(".like-count");
+      if (countEl) countEl.innerText = data.likes || 0;
+    }
+    return;
+  }
 
-        feed.appendChild(img);
-      });
+  if (renderedPhotos.has(photoId)) return;
 
-      isFirstLoad = false;
+  const card = createFeedCard(photoId, data);
+  renderedPhotos.set(photoId, card);
+
+  if (isLiveTop) {
+    feed.prepend(card);
+  } else {
+    feed.appendChild(card);
+  }
+}
+
+function createFeedCard(photoId, data) {
+  const userId = localStorage.getItem("userId");
+
+  const card = document.createElement("div");
+  card.className = "feed-card";
+  card.dataset.id = photoId;
+
+  const img = document.createElement("img");
+  img.src = data.imageUrl;
+  img.loading = "lazy";
+  img.decoding = "async";
+
+  const likeBox = document.createElement("div");
+  likeBox.className = "like-box";
+
+  const isLiked = likedCache.has(photoId);
+
+  likeBox.innerHTML = `
+    <span class="heart ${isLiked ? "liked" : ""}">❤️</span>
+    <span class="like-count">${data.likes || 0}</span>
+  `;
+
+  const heartEl = likeBox.querySelector(".heart");
+
+  async function doLike() {
+    showBigHeart(card);
+
+    if (likedCache.has(photoId)) return;
+
+    const userLikeRef = doc(db, "photos", photoId, "likes", userId);
+
+    const checkSnap = await getDoc(userLikeRef);
+    if (checkSnap.exists()) {
+      likedCache.add(photoId);
+      saveLikedCache();
+      heartEl.classList.add("liked");
       return;
     }
 
-    // 🔥 POSLIJE – samo nove slike
-    snapshot.docChanges().forEach((change) => {
+    likedCache.add(photoId);
+    saveLikedCache();
+    heartEl.classList.add("liked");
 
-      if (change.type === "added") {
-        const data = change.doc.data();
-        if (data.visible === false) return;
-
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
-
-        img.addEventListener("click", () => {
-          openFullscreen(data.imageUrl);
-        });
-
-        // 👉 nova ide na vrh
-        feed.prepend(img);
-      }
-
+    await setDoc(userLikeRef, {
+      created: Date.now()
     });
 
+    await updateDoc(doc(db, "photos", photoId), {
+      likes: increment(1)
+    });
+  }
+
+  likeBox.onclick = (e) => {
+    e.stopPropagation();
+    doLike();
+  };
+
+  let clickTimer = null;
+
+  img.onclick = () => {
+    if (clickTimer === null) {
+      clickTimer = setTimeout(() => {
+        openFullscreen(data.imageUrl);
+        clickTimer = null;
+      }, 220);
+    } else {
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      doLike();
+    }
+  };
+
+  card.appendChild(img);
+  card.appendChild(likeBox);
+
+  return card;
+}
+
+function createFeedObserver(feed) {
+  if (document.getElementById("feedSentinel")) return;
+
+  const sentinel = document.createElement("div");
+  sentinel.id = "feedSentinel";
+  sentinel.style.height = "40px";
+  feed.after(sentinel);
+
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      loadMoreFeedPhotos(feed);
+    }
+  }, {
+    rootMargin: "300px"
   });
+
+  observer.observe(sentinel);
+}
+
+async function loadMoreFeedPhotos(feed) {
+  if (isLoadingMore || !hasMorePhotos || !lastVisiblePhoto) return;
+
+  isLoadingMore = true;
+
+  const nextQuery = query(
+    collection(db, "photos"),
+    orderBy("created", "desc"),
+    startAfter(lastVisiblePhoto),
+    limit(FEED_PAGE_SIZE)
+  );
+
+  const snapshot = await getDocs(nextQuery);
+
+  if (snapshot.empty) {
+    hasMorePhotos = false;
+    isLoadingMore = false;
+    return;
+  }
+
+  lastVisiblePhoto = snapshot.docs[snapshot.docs.length - 1];
+
+  const fragment = document.createDocumentFragment();
+
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (data.visible === false) return;
+
+    const photoId = docSnap.id;
+    if (renderedPhotos.has(photoId)) return;
+
+    const card = createFeedCard(photoId, data);
+    renderedPhotos.set(photoId, card);
+    fragment.appendChild(card);
+  });
+
+  feed.appendChild(fragment);
+  isLoadingMore = false;
+}
+function showBigHeart(parent) {
+  const heart = document.createElement("div");
+  heart.className = "big-heart";
+  heart.innerText = "❤️";
+
+  parent.appendChild(heart);
+
+  setTimeout(() => {
+    heart.remove();
+  }, 900);
 }
 
 /* ===== DELETE ===== */
@@ -220,7 +411,8 @@ window.uploadToFirebase = function (file, user, onProgress) {
           imageUrl: url,
           user: user,
           userId: localStorage.getItem("userId"),
-          created: Date.now() // 🔥 FIX
+          created: Date.now(), // 🔥 FIX
+          likes:0
         });
 
         resolve(url);
@@ -263,7 +455,7 @@ window.saveDedication = async function () {
   const name = localStorage.getItem("name");
 
   if (!text) {
-    alert("Upiši posvetu");
+    alert("Napiši poruku za Niku 🤍");
     return;
   }
 
@@ -380,12 +572,18 @@ window.createUser = async function (id, name) {
 
 /* ===== FILE UPLOAD ===== */
 window.uploadFile = async function (files) {
+
   const gallery = document.getElementById("gallery");
   if (!gallery) return;
 
   const user = localStorage.getItem("name");
 
+  showToast("Fotografije se učitavaju 📸");
+
+  let uploads = [];
+
   for (let file of files) {
+
     const wrapper = document.createElement("div");
     const progress = document.createElement("div");
     const img = document.createElement("img");
@@ -396,16 +594,114 @@ window.uploadFile = async function (files) {
     wrapper.appendChild(progress);
     gallery.appendChild(wrapper);
 
-    uploadToFirebase(file, user, (percent) => {
-      progress.style.width = percent + "%";
-    }).then((url) => {
-      img.src = url;
-      progress.remove();
+    const task = compressImage(file).then((compressedFile) => {
+
+      return uploadToFirebase(compressedFile, user, (percent) => {
+        progress.style.width = percent + "%";
+      }).then((url) => {
+        img.src = url;
+        progress.remove();
+      });
+
     });
+
+    uploads.push(task);
   }
 
-  showToast("Upload u tijeku 🚀");
+  // 🔥 čekaj sve uploadove
+  await Promise.all(uploads);
+
+  // 🔥 prebaci na profile
+  switchScreen("profile");
+
+  // 🔥 refresha galeriju
+  loadMyImages();
+
+  showToast("Upload završen 🤍");
 };
+
+function loadLiveCounters() {
+
+  const photoEl = document.getElementById("livePhotoCount");
+  const dedicationEl = document.getElementById("liveDedicationCount");
+  const likesEl = document.getElementById("liveLikesCount");
+
+  if (!photoEl || !dedicationEl) return;
+
+  onSnapshot(collection(db, "photos"), (snapshot) => {
+
+    let photoCount = 0;
+    let likesTotal = 0;
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+
+      if (data.visible === false) return;
+
+      photoCount++;
+      likesTotal += data.likes || 0;
+    });
+
+    photoEl.innerText = photoCount;
+
+    if (likesEl) {
+      likesEl.innerText = likesTotal;
+    }
+  });
+
+  onSnapshot(collection(db, "dedications"), (snapshot) => {
+    dedicationEl.innerText = snapshot.size;
+  });
+}
+
+async function compressImage(file) {
+
+  return new Promise((resolve) => {
+
+    const reader = new FileReader();
+    const img = new Image();
+
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+
+    img.onload = () => {
+
+      let width = img.width;
+      let height = img.height;
+
+      const maxWidth = 1600;
+
+      if (width > maxWidth) {
+        height = height * (maxWidth / width);
+        width = maxWidth;
+      }
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+
+        const newFile = new File(
+          [blob],
+          file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+          { type: "image/jpeg" }
+        );
+
+        resolve(newFile);
+
+      }, "image/jpeg", 0.8);
+
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
 
 /* ===== ADMIN LOGIN ===== */
 window.checkAdmin = function () {
@@ -426,8 +722,21 @@ function showToast(message) {
 
   setTimeout(() => toast.classList.remove("show"), 2000);
 }
+let lastTap = 0;
 
+document.addEventListener("touchend", function(e) {
+
+  const now = Date.now();
+
+  if (now - lastTap < 350) {
+    e.preventDefault();
+  }
+
+  lastTap = now;
+
+}, { passive: false });
 /* ===== AUTO LOAD ===== */
 if (document.getElementById("feed")) {
   loadFeed();
+  loadLiveCounters();
 }
